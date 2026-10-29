@@ -17,7 +17,7 @@ else $("gate").addEventListener("submit",async e=>{
     const key=await derive($("pw").value,b64(p.salt));
     const pt=await crypto.subtle.decrypt({name:"AES-GCM",iv:b64(p.iv)},key,b64(p.ct));
     render(JSON.parse(new TextDecoder().decode(pt)));
-    $("access").hidden=true;$("dash").hidden=false;$("lock").hidden=false;$("pw").value="";
+    $("access").hidden=true;$("dash").hidden=false;$("lock").hidden=false;$("pw").value="";drawChart(selectedMetric);
   }catch(_){$("err").textContent="Passwort falsch oder Daten nicht verfügbar. Bitte erneut versuchen.";}finally{$("unlock").disabled=false;$("unlock").innerHTML='Dashboard öffnen <span aria-hidden="true">↗</span>';}
 });
 const fmt=n=>Number(n||0).toLocaleString('de-DE');
@@ -29,7 +29,8 @@ function drawChart(metric){
   document.querySelectorAll('[data-metric]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.metric===metric)));
   const label={users:'Aktive Nutzer pro Tag',sessions:'Sitzungen pro Tag',views:'Seitenaufrufe pro Tag'}[metric];
   $('chart-description').textContent=label;
-  const W=960,H=240,P=36,max=Math.max(1,...daily.map(x=>x[metric]));
+  const W=Math.max(280,Math.round($("chart").getBoundingClientRect().width)||960),H=W<500?220:240,P=36,max=Math.max(3,Math.ceil(Math.max(1,...daily.map(x=>x[metric]))/3)*3);
+  $("chart").setAttribute("viewBox",`0 0 ${W} ${H}`);
   const pts=daily.map((x,i)=>[P+i*(W-2*P)/Math.max(1,daily.length-1),H-P-(x[metric]/max)*(H-2*P)]);
   let svg='<defs><linearGradient id="area" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#6aa2fc" stop-opacity=".25"/><stop offset="1" stop-color="#6aa2fc" stop-opacity="0"/></linearGradient></defs>';
   for(let i=0;i<4;i++){const y=P+i*(H-2*P)/3;svg+=`<line x1="${P}" y1="${y}" x2="${W-P}" y2="${y}" stroke="#29496e" stroke-dasharray="3 5"/><text x="0" y="${y+4}" fill="#a5b9d5" font-size="11">${fmt(Math.round(max*(3-i)/3))}</text>`;}
@@ -50,3 +51,5 @@ function render(d){
 }
 document.querySelectorAll('[data-metric]').forEach(b=>b.addEventListener('click',()=>drawChart(b.dataset.metric)));
 $('lock').addEventListener('click',()=>{daily=[];$('dash').hidden=true;$('dash').querySelectorAll('table').forEach(t=>t.replaceChildren());$('chart').replaceChildren();['kUsers','kSessions','kViews'].forEach(id=>$(id).textContent='-');$('updated').textContent='';$('access').hidden=false;$('lock').hidden=true;$('pw').value='';$('pw').focus();});
+
+let resizeFrame;window.addEventListener("resize",()=>{cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(()=>{if(!$("dash").hidden)drawChart(selectedMetric);});});
